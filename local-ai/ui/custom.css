@@ -1,0 +1,401 @@
+/*
+ * Local AI assistant - status panel.
+ *
+ * Loaded through Open WebUI's official /static/custom.css hook, so it needs no
+ * fork and survives image upgrades. It only ADDS a panel; no Open WebUI
+ * branding is altered, removed or obscured.
+ */
+
+:root {
+	--lap-bg: #ffffff;
+	--lap-card: #fbfbfa;
+	--lap-card-hover: #f4f4f2;
+	--lap-border: #e6e4e0;
+	--lap-text: #1f1f1d;
+	--lap-muted: #86847e;
+	--lap-track: #ebe9e5;
+	--lap-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+
+	--lap-blue: #3b82f6;
+	--lap-green: #22c55e;
+	--lap-amber: #f59e0b;
+	--lap-red: #ef4444;
+	--lap-purple: #a855f7;
+	--lap-cyan: #06b6d4;
+	--lap-pink: #ec4899;
+}
+
+html.dark {
+	--lap-bg: #121212;
+	--lap-card: #1a1a1a;
+	--lap-card-hover: #212121;
+	--lap-border: #2b2b2b;
+	--lap-text: #ededeb;
+	--lap-muted: #8b8b85;
+	--lap-track: #2a2a2a;
+	--lap-shadow: none;
+
+	--lap-blue: #60a5fa;
+	--lap-green: #4ade80;
+	--lap-amber: #fbbf24;
+	--lap-red: #f87171;
+	--lap-purple: #c084fc;
+	--lap-cyan: #22d3ee;
+	--lap-pink: #f472b6;
+}
+
+/* ---- toggle ------------------------------------------------------------- */
+/* Anchored to the middle of the right edge on purpose: Open WebUI owns the
+ * top-right corner (chat controls, profile) and the bottom centre (composer),
+ * so a tab at mid-height is the one spot that never collides. */
+#lap-toggle {
+	position: fixed;
+	top: 50%;
+	right: 0;
+	transform: translateY(-50%);
+	z-index: 9998;
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	padding: 8px 10px 8px 11px;
+	font: 500 12px/1 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	color: var(--lap-muted);
+	background: var(--lap-card);
+	border: 1px solid var(--lap-border);
+	border-right: none;
+	border-radius: 10px 0 0 10px;
+	cursor: pointer;
+	box-shadow: var(--lap-shadow);
+	transition: color 0.15s ease, border-color 0.15s ease, right 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+#lap-toggle:hover {
+	color: var(--lap-text);
+	border-color: var(--lap-muted);
+	border-right: none;
+}
+
+#lap-toggle.lap-shifted {
+	right: 324px;
+}
+
+#lap-toggle .lap-chevron {
+	font-size: 9px;
+	color: var(--lap-muted);
+	transition: transform 0.22s ease;
+}
+
+#lap-toggle.lap-shifted .lap-chevron {
+	transform: rotate(180deg);
+}
+
+#lap-toggle .lap-dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: var(--lap-green);
+	box-shadow: 0 0 0 0 currentColor;
+	color: var(--lap-green);
+	animation: lap-pulse 2.4s ease-out infinite;
+}
+
+#lap-toggle .lap-dot.lap-idle {
+	background: var(--lap-muted);
+	color: transparent;
+	animation: none;
+}
+
+@keyframes lap-pulse {
+	0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+	70% { box-shadow: 0 0 0 5px transparent; opacity: 0.85; }
+	100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+
+/* ---- panel -------------------------------------------------------------- */
+#lap-panel {
+	position: fixed;
+	top: 0;
+	right: 0;
+	z-index: 9999;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: 324px;
+	max-width: 93vw;
+	height: 100vh;
+	overflow-y: auto;
+	padding: 14px 12px 28px;
+	background: var(--lap-bg);
+	border-left: 1px solid var(--lap-border);
+	font: 400 13px/1.45 ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+	color: var(--lap-text);
+	transform: translateX(100%);
+	transition: transform 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+#lap-panel.lap-open {
+	transform: translateX(0);
+}
+
+#lap-panel::-webkit-scrollbar { width: 8px; }
+#lap-panel::-webkit-scrollbar-thumb {
+	background: var(--lap-border);
+	border-radius: 4px;
+}
+
+/* ---- cards -------------------------------------------------------------- */
+.lap-card {
+	background: var(--lap-card);
+	border: 1px solid var(--lap-border);
+	border-radius: 13px;
+	padding: 13px 14px;
+	box-shadow: var(--lap-shadow);
+}
+
+/* Only the first paint animates in. Refreshes must not re-trigger this or the
+ * panel flickers every poll. */
+.lap-card.lap-in {
+	animation: lap-rise 0.3s ease both;
+}
+
+@keyframes lap-rise {
+	from { opacity: 0; transform: translateY(5px); }
+	to { opacity: 1; transform: none; }
+}
+
+.lap-card-head {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-weight: 600;
+	font-size: 13px;
+	letter-spacing: -0.01em;
+	cursor: pointer;
+	user-select: none;
+}
+
+.lap-caret {
+	color: var(--lap-muted);
+	font-size: 9px;
+	transition: transform 0.18s ease;
+}
+
+.lap-card.lap-collapsed .lap-caret { transform: rotate(-90deg); }
+.lap-card.lap-collapsed .lap-card-body { display: none; }
+.lap-card-body { margin-top: 10px; }
+
+.lap-head-note {
+	margin-left: auto;
+	font-weight: 400;
+	font-size: 11px;
+	color: var(--lap-muted);
+}
+
+/* ---- rows --------------------------------------------------------------- */
+.lap-row {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	padding: 5px 6px;
+	margin: 0 -6px;
+	min-height: 25px;
+	border-radius: 7px;
+	transition: background 0.12s ease;
+}
+
+.lap-row.lap-click { cursor: pointer; }
+.lap-row.lap-click:hover { background: var(--lap-card-hover); }
+
+.lap-row svg {
+	flex: 0 0 15px;
+	width: 15px;
+	height: 15px;
+	color: var(--lap-muted);
+	stroke: currentColor;
+	fill: none;
+	stroke-width: 1.6;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+}
+
+.lap-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lap-sub { color: var(--lap-muted); }
+
+.lap-value {
+	flex: 0 0 auto;
+	font-size: 12px;
+	color: var(--lap-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.lap-good { color: var(--lap-green); }
+.lap-warn { color: var(--lap-amber); }
+.lap-bad { color: var(--lap-red); }
+
+.lap-empty {
+	color: var(--lap-muted);
+	font-style: italic;
+	padding: 3px 0;
+}
+
+.lap-foot {
+	padding-top: 5px;
+	font-size: 11px;
+	color: var(--lap-muted);
+}
+
+/* ---- usage header + segmented bar --------------------------------------- */
+.lap-usage {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	margin-bottom: 8px;
+}
+
+.lap-usage-big {
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: -0.02em;
+}
+
+.lap-usage-sub {
+	font-size: 11px;
+	color: var(--lap-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.lap-bar {
+	display: flex;
+	gap: 2px;
+	height: 7px;
+	margin-bottom: 11px;
+	border-radius: 4px;
+	background: var(--lap-track);
+	overflow: hidden;
+}
+
+.lap-bar > i {
+	display: block;
+	height: 100%;
+	border-radius: 2px;
+	transition: width 0.45s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ---- legend ------------------------------------------------------------- */
+.lap-leg {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 3px 6px;
+	margin: 0 -6px;
+	border-radius: 6px;
+	transition: background 0.12s ease;
+}
+
+.lap-leg:hover { background: var(--lap-card-hover); }
+
+.lap-swatch {
+	flex: 0 0 9px;
+	width: 9px;
+	height: 9px;
+	border-radius: 3px;
+}
+
+.lap-leg-label {
+	flex: 1 1 auto;
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.lap-leg-val {
+	font-size: 12px;
+	color: var(--lap-muted);
+	font-variant-numeric: tabular-nums;
+}
+
+.lap-leg-pct {
+	flex: 0 0 44px;
+	text-align: right;
+	font-size: 12px;
+	font-variant-numeric: tabular-nums;
+}
+
+/* ---- badges and buttons ------------------------------------------------- */
+.lap-badge {
+	flex: 0 0 auto;
+	padding: 1px 6px;
+	font-size: 10px;
+	font-weight: 500;
+	border-radius: 5px;
+	border: 1px solid transparent;
+}
+
+.lap-badge-vision {
+	color: var(--lap-purple);
+	border-color: color-mix(in srgb, var(--lap-purple) 35%, transparent);
+}
+
+.lap-badge-hot {
+	color: var(--lap-green);
+	border-color: color-mix(in srgb, var(--lap-green) 35%, transparent);
+}
+
+.lap-btn {
+	flex: 0 0 auto;
+	padding: 3px 9px;
+	font: 500 11px/1.3 inherit;
+	color: var(--lap-muted);
+	background: transparent;
+	border: 1px solid var(--lap-border);
+	border-radius: 7px;
+	cursor: pointer;
+	transition: color 0.13s ease, border-color 0.13s ease, background 0.13s ease;
+}
+
+.lap-btn:hover:not(:disabled) {
+	color: var(--lap-text);
+	background: var(--lap-card-hover);
+	border-color: var(--lap-muted);
+}
+
+.lap-btn:disabled { opacity: 0.5; cursor: default; }
+
+.lap-spin {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border: 1.5px solid var(--lap-border);
+	border-top-color: var(--lap-blue);
+	border-radius: 50%;
+	animation: lap-spin 0.7s linear infinite;
+}
+
+@keyframes lap-spin { to { transform: rotate(360deg); } }
+
+.lap-toast {
+	margin-top: 8px;
+	padding: 7px 9px;
+	font-size: 11.5px;
+	border-radius: 8px;
+	background: var(--lap-card-hover);
+	color: var(--lap-muted);
+}
+
+/* On a narrow screen the panel covers almost the whole width, so the tab rides
+ * on top of it rather than being pushed off-screen. */
+@media (max-width: 420px) {
+	#lap-toggle.lap-shifted {
+		right: 0;
+		z-index: 10000;
+		border-radius: 10px 0 0 10px;
+	}
+}

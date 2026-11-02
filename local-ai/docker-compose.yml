@@ -1,0 +1,58 @@
+# Open WebUI wired to the Ollama container that already runs on this machine.
+#
+# The Ollama container is deliberately NOT defined here. It already exists as
+# "Olama" (GPU enabled, models on D:\olama) and must not be recreated by this
+# project. This compose file manages the web interface only and reaches Ollama
+# over the Docker Desktop host gateway.
+#
+#   docker compose -f local-ai/docker-compose.yml up -d
+#   docker compose -f local-ai/docker-compose.yml stop     # keeps all data
+
+name: local-ai-chatbot
+
+services:
+  # Service key stays "open-webui" (upstream convention); the container that
+  # appears in Docker Desktop is named by WEBUI_CONTAINER_NAME below.
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG:-v0.12.4}
+    container_name: ${WEBUI_CONTAINER_NAME:-ai-chat-ui}
+    restart: unless-stopped
+
+    # Bound to the loopback address only: not reachable from the LAN.
+    ports:
+      - '${WEBUI_BIND_ADDRESS:-127.0.0.1}:${OPEN_WEBUI_PORT:-8080}:8080'
+
+    # Everything Open WebUI persists (SQLite database, uploads, vector store,
+    # cached models, secret key) lives under this single directory.
+    volumes:
+      - '${OPEN_WEBUI_DATA_DIR:-D:/olama/open-webui}:/app/backend/data'
+      # Open WebUI's own customisation hooks, mounted read-only. Using these
+      # means no fork, no image rebuild, and they survive version upgrades.
+      - './ui/custom.css:/app/backend/open_webui/static/custom.css:ro'
+      - './ui/loader.js:/app/backend/open_webui/static/loader.js:ro'
+
+    # Lets the container resolve the Windows host, where Ollama publishes 11434.
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+
+    environment:
+      # --- Local inference -------------------------------------------------
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      # No cloud provider, so no API key is ever needed or silently used.
+      ENABLE_OPENAI_API: 'false'
+
+      # --- Sessions --------------------------------------------------------
+      # Keep the auto-generated signing key inside the mounted data directory
+      # so logins survive container recreation (the image default would write
+      # it to the container filesystem instead).
+      WEBUI_SECRET_KEY_FILE: /app/backend/data/.webui_secret_key
+
+      # --- Local-only hardening -------------------------------------------
+      WEBUI_URL: http://localhost:${OPEN_WEBUI_PORT:-8080}
+      # Both spellings of loopback: the socket.io handshake rejects any origin
+      # not listed here, which shows up in the UI as "Connection lost".
+      CORS_ALLOW_ORIGIN: ${CORS_ALLOW_ORIGIN}
+      ENABLE_VERSION_UPDATE_CHECK: 'false'
+      ANONYMIZED_TELEMETRY: 'false'
+      DO_NOT_TRACK: 'true'
+      SCARF_NO_ANALYTICS: 'true'
