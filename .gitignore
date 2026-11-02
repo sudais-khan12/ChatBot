@@ -297,7 +297,6 @@ dist
 .tern-port
 
 # Stores VSCode versions used for testing VSCode extensions
-.vscode-test
 
 # yarn v2
 .yarn/cache
@@ -309,7 +308,6 @@ dist
 # cypress artifacts
 cypress/videos
 cypress/screenshots
-.vscode/settings.json
 .cptr
 branch_structure.json
 temp_auto_push.bat
